@@ -1,12 +1,12 @@
 import os
 import requests
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, error
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Get Token from Environment Variable (For Security)
+# Get Token from Environment Variable
 TOKEN = os.getenv("BOT_TOKEN")
 
-# Top 10 Coins Mapping (Button Label -> CoinGecko ID)
+# Top 10 Coins Mapping
 COINS = {
     "bitcoin": "Bitcoin (BTC)",
     "ethereum": "Ethereum (ETH)",
@@ -21,10 +21,19 @@ COINS = {
 }
 
 def get_crypto_data(coin_id):
-    """Fetches data from CoinGecko API"""
+    """Fetches data from CoinGecko API with Headers to avoid blocking"""
     url = f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids={coin_id}"
+    
+    # Fake browser header to avoid blocking
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return "⚠️ API Busy. Please wait 1 minute and try again."
+            
         data = response.json()[0]
         
         current_price = data['current_price']
@@ -32,7 +41,6 @@ def get_crypto_data(coin_id):
         low_24h = data['low_24h']
         change_24h = data['price_change_percentage_24h']
         
-        # Determine Up/Down Icon
         trend = "🟢 UP" if change_24h > 0 else "🔴 DOWN"
         
         return (
@@ -44,14 +52,13 @@ def get_crypto_data(coin_id):
             f"🚀 **Trend:** {trend}"
         )
     except Exception as e:
-        return "❌ Error fetching data. Please try again later."
+        print(f"Error: {e}") # Log error for debugging
+        return "❌ Error fetching data. CoinGecko API might be busy."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends the menu with 10 buttons"""
+    """Sends the menu"""
     keyboard = []
     row = []
-    
-    # Create buttons in rows of 2
     for coin_id, coin_name in COINS.items():
         row.append(InlineKeyboardButton(coin_name, callback_data=coin_id))
         if len(row) == 2:
@@ -67,14 +74,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles button clicks and updates the text"""
+    """Handles button clicks with Anti-Crash Logic"""
     query = update.callback_query
-    await query.answer() # Close the loading animation
+    
+    # Show "Loading..." toast at the top
+    await query.answer("Fetching data...") 
     
     coin_id = query.data
     crypto_info = get_crypto_data(coin_id)
     
-    # Keep the buttons so user can click others
     keyboard = []
     row = []
     for cid, cname in COINS.items():
@@ -85,21 +93,26 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Edit the message with new data
-    await query.edit_message_text(
-        text=crypto_info,
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
-    )
+    # Try to edit message, ignore error if content is same
+    try:
+        await query.edit_message_text(
+            text=crypto_info,
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+    except error.BadRequest as e:
+        if "Message is not modified" in str(e):
+            # Do nothing if message is same (prevents crash)
+            pass
+        else:
+            print(f"Telegram Error: {e}")
 
 def main():
-    """Start the bot"""
     if not TOKEN:
         print("Error: BOT_TOKEN is missing!")
         return
 
     application = Application.builder().token(TOKEN).build()
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_click))
 
@@ -108,4 +121,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
