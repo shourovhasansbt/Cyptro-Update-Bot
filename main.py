@@ -2,13 +2,12 @@ import logging
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, error
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from telegram.constants import ChatMemberStatus
 
 # ---------------------------------------------------------
 # CONFIGURATION
 # ---------------------------------------------------------
 TOKEN = "8506634606:AAFygxDNyAm0z7djZ-jtJ1l-w8qWLU3heA4"
-CHANNEL_USERNAME = "@shourovtech883"  # Ensure Bot is ADMIN here
+CHANNEL_USERNAME = "@shourovtech883" 
 
 # Logging Setup
 logging.basicConfig(
@@ -29,32 +28,6 @@ COINS = {
     "USDCUSDT": "USDC (USDC)", 
     "FDUSDUSDT": "Tether (USDT)" 
 }
-
-async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Checks if the user is a member of the channel."""
-    try:
-        # Bot MUST be an Admin in the channel for this to work reliably
-        member = await context.bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
-        
-        # Check status
-        if member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR]:
-            return True
-        return False
-    except error.BadRequest as e:
-        print(f"Error checking channel (Bot might not be admin): {e}")
-        return False
-    except Exception as e:
-        print(f"Subscription Check Error: {e}")
-        return False
-
-def get_join_keyboard():
-    """Returns the Join Channel button."""
-    channel_link = f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"
-    keyboard = [
-        [InlineKeyboardButton("📢 Join Channel to Use Bot", url=channel_link)],
-        [InlineKeyboardButton("✅ I Have Joined", callback_data="check_join")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
 
 def get_crypto_data(symbol):
     """Fetches data from Binance API"""
@@ -89,9 +62,11 @@ def get_crypto_data(symbol):
         return "❌ Error fetching data. Please try again."
 
 def get_main_menu():
-    """Returns the crypto list keyboard"""
+    """Returns the crypto list keyboard with a Join button at the bottom"""
     keyboard = []
     row = []
+    
+    # Add Coin Buttons
     for symbol, name in COINS.items():
         row.append(InlineKeyboardButton(name, callback_data=symbol))
         if len(row) == 2:
@@ -99,24 +74,19 @@ def get_main_menu():
             row = []
     if row:
         keyboard.append(row)
+    
+    # Add simple "Join Channel" button (Link only, no verification)
+    channel_link = f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"
+    keyboard.append([InlineKeyboardButton("📢 Join Official Channel", url=channel_link)])
+    
     return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Starts the bot with subscription check"""
-    user_id = update.effective_user.id
-    
-    # 1. Check Subscription
-    if not await check_subscription(user_id, context):
-        await update.message.reply_text(
-            "🚫 **Access Denied!**\n\nYou must join our Telegram channel to use this bot.",
-            reply_markup=get_join_keyboard(),
-            parse_mode="Markdown"
-        )
-        return
-
-    # 2. If subscribed, show menu
+    """Starts the bot directly without verification"""
     await update.message.reply_text(
-        "📊 **Crypto Market Tracker (Binance)**\nSelect a coin below for instant updates:",
+        "📊 **Crypto Market Tracker (Binance)**\n\n"
+        "Join our channel for updates: @shourovtech883\n"
+        "Select a coin below for instant updates:",
         reply_markup=get_main_menu(),
         parse_mode="Markdown"
     )
@@ -124,32 +94,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles button clicks"""
     query = update.callback_query
-    user_id = query.from_user.id
-
-    # 1. Handle "I Have Joined" button check
-    if query.data == "check_join":
-        if await check_subscription(user_id, context):
-            await query.answer("✅ Welcome back!")
-            await query.edit_message_text(
-                "📊 **Crypto Market Tracker (Binance)**\nSelect a coin below for instant updates:",
-                reply_markup=get_main_menu(),
-                parse_mode="Markdown"
-            )
-        else:
-            await query.answer("❌ You haven't joined yet!", show_alert=True)
-        return
-
-    # 2. Double Check Subscription (Security)
-    if not await check_subscription(user_id, context):
-        await query.answer("⚠️ Please join the channel first!", show_alert=True)
-        await query.edit_message_text(
-            "🚫 **Access Denied!**\n\nYou must join our Telegram channel to use this bot.",
-            reply_markup=get_join_keyboard(),
-            parse_mode="Markdown"
-        )
-        return
     
-    # 3. Fetch and Show Crypto Data
+    # Fetch and Show Crypto Data
     await query.answer("Fetching live data...") 
     
     symbol = query.data
@@ -179,6 +125,5 @@ def main():
     print("Bot is running...")
     application.run_polling()
 
-# --- FIXED LINE BELOW ---
 if __name__ == "__main__":
     main()
