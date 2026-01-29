@@ -76,12 +76,12 @@ def get_crypto_data(symbol):
         name = COINS.get(symbol, symbol)
 
         return (
-            f"💰 {name}\n\n"
-            f"💵 Price: ${price:,.4f}\n"
-            f"📈 24h High: ${high:,.4f}\n"
-            f"📉 24h Low: ${low:,.4f}\n"
-            f"📊 Change: {change:.2f}%\n"
-            f"🚀 Trend: {trend}"
+            f"💰 **{name}**\n\n"
+            f"💵 **Price:** ${price:,.4f}\n"
+            f"📈 **24h High:** ${high:,.4f}\n"
+            f"📉 **24h Low:** ${low:,.4f}\n"
+            f"📊 **Change:** {change:.2f}%\n"
+            f"🚀 **Trend:** {trend}"
         )
     except Exception as e:
         print(f"Error: {e}")
@@ -107,15 +107,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 1. Check Subscription
     if not await check_subscription(user_id, context):
         await update.message.reply_text(
-            "🚫 Access Denied!\n\nYou must join our Telegram channel to use this bot.",
+            "🚫 **Access Denied!**\n\nYou must join our Telegram channel to use this bot.",
             reply_markup=get_join_keyboard(),
             parse_mode="Markdown"
         )
         return
 
-# 2. If subscribed, show menu
+    # 2. If subscribed, show menu
     await update.message.reply_text(
-        "📊 Crypto Market Tracker (Binance)\nSelect a coin below for instant updates:",
+        "📊 **Crypto Market Tracker (Binance)**\nSelect a coin below for instant updates:",
         reply_markup=get_main_menu(),
         parse_mode="Markdown"
     )
@@ -130,7 +130,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if await check_subscription(user_id, context):
             await query.answer("✅ Welcome back!")
             await query.edit_message_text(
-                "📊 Crypto Market Tracker (Binance)\nSelect a coin below for instant updates:",
+                "📊 **Crypto Market Tracker (Binance)**\nSelect a coin below for instant updates:",
                 reply_markup=get_main_menu(),
                 parse_mode="Markdown"
             )
@@ -142,7 +142,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_subscription(user_id, context):
         await query.answer("⚠️ Please join the channel first!", show_alert=True)
         await query.edit_message_text(
-            "🚫 Access Denied!\n\nYou must join our Telegram channel to use this bot.",
+            "🚫 **Access Denied!**\n\nYou must join our Telegram channel to use this bot.",
             reply_markup=get_join_keyboard(),
             parse_mode="Markdown"
         )
@@ -178,5 +178,5 @@ def main():
     print("Bot is running...")
     application.run_polling()
 
-if name == "main":
+if __name__ == "__main__":
     main()
