@@ -39,8 +39,6 @@ async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -
             return True
         return False
     except error.BadRequest:
-        # If bot is not admin or channel is private/invalid, this might fail. 
-        # For public channels, it usually works.
         print(f"Error checking channel: {CHANNEL_USERNAME}")
         return False
     except Exception as e:
@@ -49,8 +47,10 @@ async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -
 
 def get_join_keyboard():
     """Returns the Join Channel button."""
+    # Removes the '@' for the URL link
+    channel_link = f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"
     keyboard = [
-        [InlineKeyboardButton("📢 Join Channel to Use Bot", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}")],
+        [InlineKeyboardButton("📢 Join Channel to Use Bot", url=channel_link)],
         [InlineKeyboardButton("✅ I Have Joined", callback_data="check_join")]
     ]
     return InlineKeyboardMarkup(keyboard)
