@@ -1,13 +1,20 @@
-import os
+import logging
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, error
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Get Token from Environment Variable
-TOKEN = os.getenv("8506634606:AAFygxDNyAm0z7djZ-jtJ1l-w8qWLU3heA4")
+# ---------------------------------------------------------
+# কনফিগারেশন (সরাসরি টোকেন বসানো হয়েছে)
+# ---------------------------------------------------------
+TOKEN = "8506634606:AAFygxDNyAm0z7djZ-jtJ1l-w8qWLU3heA4"
 
-# Top 10 Coins Mapping (Button Label -> Binance Symbol)
-# Note: Stablecoins (USDT/USDC) are compared against other stables for data
+# লগিং সেটআপ (ত্রুটি দেখার জন্য)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# কয়েন ম্যাপিং
 COINS = {
     "BTCUSDT": "Bitcoin (BTC)",
     "ETHUSDT": "Ethereum (ETH)",
@@ -17,23 +24,23 @@ COINS = {
     "ADAUSDT": "Cardano (ADA)",
     "DOGEUSDT": "Dogecoin (DOGE)",
     "TRXUSDT": "Tron (TRX)",
-    "USDCUSDT": "USDC (USDC)",  # USDC vs USDT
-    "FDUSDUSDT": "Tether (USDT)" # USDT vs FDUSD (Stable vs Stable)
+    "USDCUSDT": "USDC (USDC)", 
+    "FDUSDUSDT": "Tether (USDT)" 
 }
 
 def get_crypto_data(symbol):
-    """Fetches data from BINANCE API (No Key Required, Very Fast)"""
+    """Binance API থেকে ডাটা নিয়ে আসে"""
     url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
 
     try:
         response = requests.get(url, timeout=10)
         
         if response.status_code != 200:
-            return "⚠️ Error fetching data from Binance."
+            return "⚠️ Binance থেকে ডাটা পাওয়া যাচ্ছে না।"
             
         data = response.json()
         
-        # Binance gives strings, convert to float
+        # ডাটা প্রসেসিং
         price = float(data['lastPrice'])
         high = float(data['highPrice'])
         low = float(data['lowPrice'])
@@ -41,8 +48,8 @@ def get_crypto_data(symbol):
         
         trend = "🟢 UP" if change > 0 else "🔴 DOWN"
         
-        # Formatting Name
-        name = [v for k, v in COINS.items() if k == symbol][0]
+        # নাম বের করা
+        name = COINS.get(symbol, symbol)
 
         return (
             f"💰 **{name}**\n\n"
@@ -54,10 +61,10 @@ def get_crypto_data(symbol):
         )
     except Exception as e:
         print(f"Error: {e}")
-        return "❌ Error fetching data. Please try again."
+        return "❌ এরর! দয়া করে আবার চেষ্টা করুন।"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sends the menu"""
+    """মেনু সেন্ড করে"""
     keyboard = []
     row = []
     for symbol, name in COINS.items():
@@ -66,25 +73,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard.append(row)
             row = []
     
+    # যদি শেষ লাইনে একটা বাটন বাকি থাকে
+    if row:
+        keyboard.append(row)
+    
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "📊 **Crypto Market Tracker (Binance)**\nSelect a coin for instant update:",
+        "📊 **Crypto Market Tracker (Binance)**\nনিচে যেকোনো একটি কয়েন সিলেক্ট করুন:",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles button clicks"""
+    """বাটন ক্লিক হ্যান্ডেল করে"""
     query = update.callback_query
     
-    # Show loading toast
-    await query.answer("Fetching live data...") 
+    # লোডিং টোস্ট দেখাবে
+    await query.answer("ডাটা লোড হচ্ছে...") 
     
     symbol = query.data
     crypto_info = get_crypto_data(symbol)
     
-    # Rebuild keyboard
+    # কিবোর্ড আবার তৈরি করা (যেন হারিয়ে না যায়)
     keyboard = []
     row = []
     for sym, name in COINS.items():
@@ -92,6 +103,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if len(row) == 2:
             keyboard.append(row)
             row = []
+    if row:
+        keyboard.append(row)
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -103,7 +116,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except error.BadRequest as e:
         if "Message is not modified" in str(e):
-            pass # Ignore crash if data is same
+            pass # ডাটা একই থাকলে ক্র্যাশ করবে না
         else:
             print(f"Telegram Error: {e}")
 
