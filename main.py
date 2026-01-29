@@ -8,7 +8,7 @@ from telegram.constants import ChatMemberStatus
 # CONFIGURATION
 # ---------------------------------------------------------
 TOKEN = "8506634606:AAFygxDNyAm0z7djZ-jtJ1l-w8qWLU3heA4"
-CHANNEL_USERNAME = "@shourovtech883"  # Your Channel Link
+CHANNEL_USERNAME = "@shourovtech883"  # Ensure Bot is ADMIN here
 
 # Logging Setup
 logging.basicConfig(
@@ -33,13 +33,15 @@ COINS = {
 async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
     """Checks if the user is a member of the channel."""
     try:
+        # Bot MUST be an Admin in the channel for this to work reliably
         member = await context.bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
-        # Check if status is member, creator, or admin
+        
+        # Check status
         if member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.CREATOR, ChatMemberStatus.ADMINISTRATOR]:
             return True
         return False
-    except error.BadRequest:
-        print(f"Error checking channel: {CHANNEL_USERNAME}")
+    except error.BadRequest as e:
+        print(f"Error checking channel (Bot might not be admin): {e}")
         return False
     except Exception as e:
         print(f"Subscription Check Error: {e}")
@@ -47,7 +49,6 @@ async def check_subscription(user_id: int, context: ContextTypes.DEFAULT_TYPE) -
 
 def get_join_keyboard():
     """Returns the Join Channel button."""
-    # Removes the '@' for the URL link
     channel_link = f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}"
     keyboard = [
         [InlineKeyboardButton("📢 Join Channel to Use Bot", url=channel_link)],
@@ -178,5 +179,6 @@ def main():
     print("Bot is running...")
     application.run_polling()
 
+# --- FIXED LINE BELOW ---
 if __name__ == "__main__":
     main()
