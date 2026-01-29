@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, error
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # Get Token from Environment Variable
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("8506634606:AAFygxDNyAm0z7djZ-jtJ1l-w8qWLU3heA4")
 
 # Top 10 Coins Mapping (Button Label -> Binance Symbol)
 # Note: Stablecoins (USDT/USDC) are compared against other stables for data
